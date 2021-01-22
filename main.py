@@ -7,6 +7,7 @@ import argparse
 from path_sgd import PathSGD
 import time
 from torchvision import transforms, datasets
+import pickle
 
 # train the model for one epoch on the given set
 def train(args, model, state_dict, device, train_loader, criterion, optimizer, path_optimizer, epoch):
@@ -86,6 +87,14 @@ def load_data(split, dataset_name, datadir, nchannels):
 
     return dataset
 
+# This function saves training curves to pickle
+def save_err_and_loss(args, tr_err_curve, tr_loss_curve, val_err_curve, tr_loss_curve):
+    filename = args.optimizer + '.data'
+
+    curves = [tr_err_curve, tr_loss_curve, val_err_curve, val_loss_curve]
+    
+    with open(filename, 'wb') as filehandle:
+        pickle.dump(curves, filehandle)
 
 # This function trains a fully connected neural net with two hidden layer using SGD or Path-SGD
 def main():
@@ -102,8 +111,8 @@ def main():
                         help='number of hidden units (default: 4000)')
     parser.add_argument('--optimizer', default='sgd', type=str,
                         help='name of the optimizer (options: sgd | path-sgd, default: sgd)')
-    parser.add_argument('--epochs', default=1000, type=int,
-                        help='number of epochs to train (default: 1000)')
+    parser.add_argument('--epochs', default=100, type=int,
+                        help='number of epochs to train (default: 100)')
     parser.add_argument('--stopcond', default=0.01, type=float,
                         help='stopping condtion based on the cross-entropy loss (default: 0.01)')
     parser.add_argument('--batchsize', default=64, type=int,
@@ -133,7 +142,7 @@ def main():
 
     path_optimizer = None
     if args.optimizer == 'path-sgd':
-        path_optimizer = PathSGD(model, input_dim)
+        path_optimizer = PathSGD(model, input_dim, device)
 
     # loading data
     train_dataset = load_data('train', args.dataset, args.datadir, nchannels)
@@ -142,6 +151,12 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batchsize, shuffle=True, **kwargs)
     val_loader = DataLoader(val_dataset, batch_size=args.batchsize, shuffle=False, **kwargs)
 
+    tr_err_curve = []
+    tr_loss_curve = []
+    
+    val_err_curve = []
+    val_loss_curve = []
+
     # training the model
     for epoch in range(0, args.epochs):
         start_time = time.time()
@@ -149,12 +164,17 @@ def main():
         tr_err, tr_loss = train(args, model, state_dict, device, train_loader, criterion, optimizer, path_optimizer, epoch)
         val_err, val_loss = validate(args, model, device, val_loader, criterion)
 
+        tr_err_curve.append(tr_err)
+        tr_loss_curve.append(tr_loss)
+
+        val_err_curve.append(val_err)
+        val_loss_curve.append(val_loss)
+        
         elapsed_time = time.time()-start_time
         print(f'Epoch: {epoch + 1}/{args.epochs}\t Elapsed time: {elapsed_time:.3f}\t training loss: {tr_loss:.3f}\t ',
                 f'Training error: {tr_err:.3f}\t Validation error: {val_err:.3f}')
 
-        # stop training if the cross-entropy loss is less than the stopping condition
-        if tr_loss < args.stopcond: break
+    save_err_and_loss(args, tr_err_curve, tr_loss_curve, val_err_curve, val_loss_curve)
 
 if __name__ == '__main__':
     main()

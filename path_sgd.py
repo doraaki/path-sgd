@@ -4,10 +4,11 @@ import copy
 import time
 
 class PathSGD:
-    def __init__(self, model, input_dim):
+    def __init__(self, model, input_dim, device):
         self.model = copy.deepcopy(model)
         self.model.eval()
         self.input_dim = input_dim
+        self.device = device
         self.state = model.state_dict()
         self.params = model.parameters()
         self.path_state = self.model.state_dict()
@@ -22,7 +23,7 @@ class PathSGD:
             for param in self.model.parameters():
                 if param.requires_grad:
                     param.pow_(2)
-        data_ones = torch.ones(2, self.input_dim).cuda()
+        data_ones = torch.ones(2, self.input_dim).to(self.device)
         path_norm = 0.5 * self.model(data_ones).sum()
         path_norm.backward()
 
