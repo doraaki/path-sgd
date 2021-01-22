@@ -88,7 +88,7 @@ def load_data(split, dataset_name, datadir, nchannels):
     return dataset
 
 # This function saves training curves to pickle
-def save_err_and_loss(args, tr_err_curve, tr_loss_curve, val_err_curve, tr_loss_curve):
+def save_err_and_loss(args, tr_err_curve, tr_loss_curve, val_err_curve, val_loss_curve):
     filename = args.optimizer + '.data'
 
     curves = [tr_err_curve, tr_loss_curve, val_err_curve, val_loss_curve]
