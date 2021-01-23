@@ -110,7 +110,7 @@ def main():
     parser.add_argument('--nunits', default=4000, type=int,
                         help='number of hidden units (default: 4000)')
     parser.add_argument('--optimizer', default='sgd', type=str,
-                        help='name of the optimizer (options: sgd | path-sgd, default: sgd)')
+                        help='name of the optimizer (options: sgd | path-sgd | adagrad, default: sgd)')
     parser.add_argument('--epochs', default=100, type=int,
                         help='number of epochs to train (default: 100)')
     parser.add_argument('--stopcond', default=0.01, type=float,
@@ -138,7 +138,10 @@ def main():
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().to(device)
-    optimizer = optim.SGD(model.parameters(), args.learningrate, momentum=args.momentum)
+    if args.optimizer == 'adagrad':
+        optimizer = optim.Adagrad(model.parameters(), args.learningrate)
+    else:
+        optimizer = optim.SGD(model.parameters(), args.learningrate, momentum=args.momentum)
 
     path_optimizer = None
     if args.optimizer == 'path-sgd':
