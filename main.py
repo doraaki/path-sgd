@@ -131,8 +131,19 @@ def main():
     if args.dataset == 'CIFAR100': nclasses = 100
     input_dim = 32 * 32 * nchannels
     # create an initial model
-    model = nn.Sequential(nn.Linear(input_dim, args.nunits), nn.ReLU(),
-                            nn.Linear(args.nunits, args.nunits), nn.ReLU(), nn.Linear(args.nunits, nclasses)).to(device)
+    conv1 = nn.Linear(input_dim, args.nunits).to(device)
+    conv2 = nn.Linear(args.nunits, args.nunits).to(device)
+    conv3 = nn.Linear(args.nunits, nclasses).to(device)
+    model = nn.Sequential(conv1, nn.ReLU(),
+                            conv2, nn.ReLU(), conv3).to(device)
+
+    # use correct initialization as in paper
+    torch.nn.init.normal_(conv1.weight, 0, 1 / np.sqrt(conv1.in_features))
+    torch.nn.init.normal_(conv2.weight, 0, 1 / np.sqrt(conv2.in_features))
+    torch.nn.init.normal_(conv3.weight, 0, 1 / np.sqrt(conv3.in_features))
+    torch.nn.init.normal_(conv1.bias, 0, 1 / np.sqrt(conv1.in_features))
+    torch.nn.init.normal_(conv2.bias, 0, 1 / np.sqrt(conv2.in_features))
+    torch.nn.init.normal_(conv3.bias, 0, 1 / np.sqrt(conv3.in_features))
 
     state_dict = model.state_dict()
 
