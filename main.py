@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn, optim
+import torch.nn.init
 from torch.utils.data import DataLoader
 import copy
 import argparse
@@ -96,6 +97,25 @@ def save_err_and_loss(args, tr_err_curve, tr_loss_curve, val_err_curve, val_loss
     with open(filename, 'wb') as filehandle:
         pickle.dump(curves, filehandle)
 
+def random_scale_weights(model):
+    layers = [module for module in model.modules() if type(module) != nn.Sequential]
+    
+    with torch.no_grad():
+        for scaling_iteration in range(2000):
+            c = np.random.lognormal()
+            neuron_index = np.random.randint(8000)
+            if neuron_index < 4000:
+                layers[0].weight[neuron_index, :] *= 10 * c
+                layers[0].bias[neuron_index] *= 10 * c
+                layers[2].weight[:, neuron_index] /= 10 * c
+            else:
+                neuron_index -= 4000
+                layers[2].weight[neuron_index, :] *= 10 * c
+                layers[2].bias[neuron_index] *= 10 * c
+                layers[4].weight[:, neuron_index] /= 10 * c
+
+
+
 # This function trains a fully connected neural net with two hidden layer using SGD or Path-SGD
 def main():
 
@@ -103,6 +123,8 @@ def main():
     parser = argparse.ArgumentParser(description='Training a fully connected NN with one hidden layer')
     parser.add_argument('--no-cuda', default=False, action='store_true',
                         help='disables CUDA training')
+    parser.add_argument('--use-unbalanced-init', default=False, action='store_true',
+                        help='makes initialization unbalanced')
     parser.add_argument('--datadir', default='datasets', type=str,
                         help='path to the directory that contains the datasets (default: datasets)')
     parser.add_argument('--dataset', default='CIFAR10', type=str,
@@ -138,12 +160,17 @@ def main():
                             conv2, nn.ReLU(), conv3).to(device)
 
     # use correct initialization as in paper
+    
     torch.nn.init.normal_(conv1.weight, 0, 1 / np.sqrt(conv1.in_features))
     torch.nn.init.normal_(conv2.weight, 0, 1 / np.sqrt(conv2.in_features))
     torch.nn.init.normal_(conv3.weight, 0, 1 / np.sqrt(conv3.in_features))
     torch.nn.init.normal_(conv1.bias, 0, 1 / np.sqrt(conv1.in_features))
     torch.nn.init.normal_(conv2.bias, 0, 1 / np.sqrt(conv2.in_features))
     torch.nn.init.normal_(conv3.bias, 0, 1 / np.sqrt(conv3.in_features))
+    
+
+    if args.use_unbalanced_init:
+        random_scale_weights(model)
 
     state_dict = model.state_dict()
 
